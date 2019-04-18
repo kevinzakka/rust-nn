@@ -20,4 +20,3 @@ if __name__ == "__main__":
     plt.axis('off')
     plt.savefig("decision_boundary.png", format="png", dpi=150, bbox_inches='tight')
     plt.close()
-
