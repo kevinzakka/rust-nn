@@ -1,5 +1,5 @@
 [package]
-name = "ml"
+name = "nn"
 version = "0.1.0"
 authors = ["Kevin <kevinarmandzakka@gmail.com>"]
 edition = "2018"

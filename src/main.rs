@@ -14,7 +14,7 @@ use ndarray_rand::{RandomExt, F32};
 const HIDDEN_LAYER: usize = 100;
 const NUM_CLASSES: usize = 3;
 const NUM_DIM: usize = 2;
-const NUM_SAMPLES: usize = 100;
+const NUM_SAMPLES_PER_CLASS: usize = 100;
 const NUM_ITERS: u32 = 10_000;
 const L2_REG: f32 = 1e-3;
 const LEARNING_RATE: f32 = 1e-0;
@@ -29,16 +29,15 @@ fn generate_data(n: usize, d: usize, k: usize) -> (Array2<f32>, Array1<u8>) {
         let r = Array::linspace(0., 1., n);
         let noise = 0.2 * Array::random(n, F32(StandardNormal));
         let t = Array::linspace((i * 4) as f32, ((i+1)*4) as f32, n) + noise;
-        let x = (t.clone().mapv(f32::cos) * &r).insert_axis(Axis(1));
-        let y = (t.clone().mapv(f32::sin) * &r).insert_axis(Axis(1));
-        data.slice_mut(s![i*n..(i+1)*n, ..]).assign(&stack(Axis(1), &[x.view(), y.view()]).unwrap().view());
-        let mut lbl = Array1::<u8>::zeros(n);
-        lbl.fill(i as u8);
+        let x = (&t.mapv(f32::cos) * &r).insert_axis(Axis(1));
+        let y = (&t.mapv(f32::sin) * &r).insert_axis(Axis(1));
+        data.slice_mut(s![i*n..(i+1)*n, ..]).assign(&stack(Axis(1), &[x.view(), y.view()]).unwrap());
+        let lbl = Array1::<u8>::from_elem(n, i as u8);
         label.slice_mut(s![i*n..(i+1)*n]).assign(&lbl);
     }
 
     // shuffle
-    let mut indices: Vec<usize> = (0..NUM_SAMPLES*NUM_CLASSES).collect();
+    let mut indices: Vec<usize> = (0..n*k).collect();
     indices.shuffle(&mut thread_rng());
     let mut X = Array2::<f32>::zeros((n*k, d));
     let mut y = Array1::<u8>::zeros(n*k);
@@ -59,7 +58,8 @@ fn cross_entropy(probas: Array2<f32>, labels: Array1<u8>) -> f32 {
 }
 
 fn main() {
-    let (X, y) = generate_data(NUM_SAMPLES, NUM_DIM, NUM_CLASSES);
+    let (X, y) = generate_data(NUM_SAMPLES_PER_CLASS, NUM_DIM, NUM_CLASSES);
+    let num_samples = X.rows();
     
     if DUMP {
         npy::to_file("data/X.npy", X.iter().map(|el| *el)).unwrap();
@@ -71,7 +71,6 @@ fn main() {
     let mut W2 = 0.01 * Array::random((HIDDEN_LAYER, NUM_CLASSES), F32(StandardNormal));
     let mut b2 = Array2::<f32>::zeros((1, NUM_CLASSES));
 
-    let num_samples = X.rows();
     for i in 0..NUM_ITERS {
         // forward pass to compute class scores
         let mut hidden_layer = X.dot(&W1) + &b1;
